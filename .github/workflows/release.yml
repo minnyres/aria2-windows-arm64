@@ -82,13 +82,13 @@ jobs:
           cp ${{ github.workspace }}/aria2-${{ env.aria2_version }}/src/aria2c.exe upload 
           ${{ env.llvm_path }}/bin/aarch64-w64-mingw32-strip upload/aria2c.exe
           cd upload
-          7z a aria2c_${{ env.aria2_version }}_arm64.zip aria2c.exe
-          mv aria2c_${{ env.aria2_version }}_arm64.zip ..
+          7z a aria2_${{ env.aria2_version }}_arm64.zip aria2c.exe
+          mv aria2_${{ env.aria2_version }}_arm64.zip ..
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: aria2c_${{ env.aria2_version }}_arm64
+          name: aria2_${{ env.aria2_version }}_arm64
           path: upload
 
       - name: Batch release
@@ -96,5 +96,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: aria2c_${{ env.aria2_version }}_arm64.zip
+          files: aria2_${{ env.aria2_version }}_arm64.zip
     
