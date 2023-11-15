@@ -10,8 +10,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
-      aria2_version: "1.36.0"
-      libssh2_version: "1.10.0"
+      aria2_version: "1.37.0"
+      libssh2_version: "1.11.0"
       llvm_path: "${{ github.workspace }}/llvm-mingw"
       libssh2_path: "${{ github.workspace }}/libssh2-windows-arm64"
     
