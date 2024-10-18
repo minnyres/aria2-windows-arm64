@@ -2,8 +2,6 @@ name: Build for Windows ARM64
 
 on:
   push:
-    tags:
-    - '*'
 
 jobs:
   build-windows-arm64:
@@ -35,10 +33,13 @@ jobs:
         run: |
           PATH=$PATH:${{ env.llvm_path }}/bin
           cd vcpkg
+          git apply ${{ github.workspace }}/patches/vcpkg-disable-asm-for-arm32.patch
           # tell vcpkg to only build Release variants of the dependencies
           mkdir triplets_overlay
           cp triplets/community/arm64-mingw-static.cmake triplets_overlay/arm64-mingw-static-release.cmake
+          cp triplets/community/arm-mingw-static.cmake triplets_overlay/arm-mingw-static-release.cmake
           echo "set(VCPKG_BUILD_TYPE release)" >> triplets_overlay/arm64-mingw-static-release.cmake
+          echo "set(VCPKG_BUILD_TYPE release)" >> triplets_overlay/arm-mingw-static-release.cmake
           # clear buildtrees after each package installation to reduce disk space requirements
           packages="zlib expat sqlite3 c-ares gmp"
           ./vcpkg upgrade \
@@ -49,52 +50,30 @@ jobs:
             --clean-after-build \
             --triplet=arm64-mingw-static-release \
             $packages
-          
-      - name: Install libssh2
-        run: |
-          PATH=$PATH:${{ env.llvm_path }}/bin
-          wget https://www.libssh2.org/download/libssh2-${{ env.libssh2_version }}.tar.gz
-          tar -xf libssh2-${{ env.libssh2_version }}.tar.gz
-          cd libssh2-${{ env.libssh2_version }}
-          autoreconf -fi
-          ./configure --disable-debug --disable-shared --enable-static \
-            --prefix=${{ env.libssh2_path }} --host=aarch64-w64-mingw32 \
-            --without-openssl --with-wincng
-          make install
+          ./vcpkg install \
+            --overlay-triplets=triplets_overlay \
+            --clean-after-build \
+            --triplet=arm-mingw-static-release \
+            $packages
 
       - name: Build aria2
         run: |
-          PATH=$PATH:${{ env.llvm_path }}/bin
-          wget https://github.com/aria2/aria2/releases/download/release-${{ env.aria2_version }}/aria2-${{ env.aria2_version }}.tar.xz
-          tar -xf aria2-${{ env.aria2_version }}.tar.xz
-          cd aria2-${{ env.aria2_version }}
-          export PKG_CONFIG_PATH=${{ github.workspace }}/vcpkg/installed/arm64-mingw-static-release/lib/pkgconfig:${{ env.libssh2_path }}/lib/pkgconfig
-          export ARIA2_STATIC=yes
-          export CPPFLAGS="-I${{ github.workspace }}/vcpkg/installed/arm64-mingw-static-release/include"
-          export LDFLAGS="-L${{ github.workspace }}/vcpkg/installed/arm64-mingw-static-release/lib"
-          ./configure --host=aarch64-w64-mingw32  \
-            --without-libxml2 --with-libexpat
-          make -j$(nproc)
-
-      - name: Prepare build artifacts
-        run: |
-          mkdir upload
-          cp ${{ github.workspace }}/aria2-${{ env.aria2_version }}/src/aria2c.exe upload 
-          ${{ env.llvm_path }}/bin/aarch64-w64-mingw32-strip upload/aria2c.exe
-          cd upload
-          7z a aria2_${{ env.aria2_version }}_arm64.zip aria2c.exe
-          mv aria2_${{ env.aria2_version }}_arm64.zip ..
+          chmod 755 build.sh
+          ./build.sh arm64
+          ./build.sh arm32
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: aria2_${{ env.aria2_version }}_arm64
-          path: upload
+          name: aria2_woa
+          path: aria2*.zip
 
       - name: Batch release
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: aria2_${{ env.aria2_version }}_arm64.zip
+          files: |
+            aria2*.zip
     
